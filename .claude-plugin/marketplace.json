@@ -1,0 +1,11 @@
+{
+  "name": "stereopt-plugins",
+  "owner": { "name": "Guido Pereira" },
+  "plugins": [
+    {
+      "name": "obsidian",
+      "source": "./plugins/obsidian",
+      "description": "Skills for the Obsidian Second Brain Vault"
+    }
+  ]
+}
