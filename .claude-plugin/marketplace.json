@@ -1,11 +1,13 @@
 {
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
   "name": "stereopt-plugins",
   "owner": { "name": "Guido Pereira" },
   "plugins": [
     {
       "name": "obsidian",
       "source": "./plugins/obsidian",
-      "description": "Skills for the Obsidian Second Brain Vault"
+      "description": "Skills for the Obsidian Second Brain Vault",
+      "category": "productivity"
     }
   ]
 }

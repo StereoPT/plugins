@@ -17,7 +17,10 @@ Follow these steps exactly:
 
 2. **Compute the file path:** `/Meals/YYYY-WNN.md` using the ISO week string (e.g. `2026-W26`). Check if the file already exists — if it does, inform the user and ask whether to overwrite or abort before continuing.
 
-3. **Load disliked ingredients** by reading `/Meals/Preferences.md`. Extract every item listed under "Disliked Ingredients". These must not appear in any meal this week — not as a main ingredient, not as a seasoning, not hidden inside a dish name.
+3. **Load disliked ingredients** by reading `/Meals/Preferences.md`.
+   - If the file exists, extract every item listed under "Disliked Ingredients".
+   - If the file doesn't exist, ask the user: "I couldn't find `/Meals/Preferences.md` — any ingredients you'd like to exclude from meal plans? (or press Enter to skip)". Offer to save their answer to `/Meals/Preferences.md` (using a simple `## Disliked Ingredients` heading with a bullet list) so future runs don't need to ask again.
+   These must not appear in any meal this week — not as a main ingredient, not as a seasoning, not hidden inside a dish name.
 
 4. **Ask the user one question before generating:**
    - "Any preferences or themes for this week? (e.g. Italian week, lighter meals, use up X ingredient) — or just press Enter to skip."
@@ -30,45 +33,10 @@ Follow these steps exactly:
    - Incorporate any preferences from step 4.
    - Include a short, appetising one-liner description per meal (e.g. "Pan-seared salmon with lemon butter and roasted asparagus").
 
-6. **Write the file** at `/Meals/YYYY-WNN.md` using this exact structure:
-
-```
----
-week: YYYY-WNN
-tags:
-  - meal-plan
-status: draft
----
-# Meal Plan — Week of <Monday date, e.g. "June 23, 2026">
-
-## Monday (Jun 23)
-- **Lunch:** <meal>
-- **Dinner:** <meal>
-
-## Tuesday (Jun 24)
-- **Lunch:** <meal>
-- **Dinner:** <meal>
-
-## Wednesday (Jun 25)
-- **Lunch:** <meal>
-- **Dinner:** <meal>
-
-## Thursday (Jun 26)
-- **Lunch:** <meal>
-- **Dinner:** <meal>
-
-## Friday (Jun 27)
-- **Lunch:** <meal>
-- **Dinner:** <meal>
-
-## Saturday (Jun 28)
-- **Lunch:** <meal>
-- **Dinner:** <meal>
-
-## Sunday (Jun 29)
-- **Lunch:** <meal>
-- **Dinner:** <meal>
-```
+6. **Write the file** at `/Meals/YYYY-WNN.md`:
+   - Use `/Templates/Meal Plan Template.md` from the vault as the base if it exists. It contains Templater syntax (`<%* ... %>` blocks and `<% ... %>` expressions) for computing the week's dates — ignore that syntax and use the dates you already computed in step 1 to fill in the static Markdown structure (the `week` frontmatter field, the heading, and each day's date).
+   - Otherwise, fall back to the bundled `templates/Meal Plan Template.md` in this skill's folder.
+   - Fill in each day's Lunch and Dinner with the meals generated in step 5.
 
 7. **Report back** with:
    - The full path of the created file

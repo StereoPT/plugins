@@ -16,7 +16,10 @@ Follow these steps exactly:
    - The tech stack they plan to use (frameworks, libraries, tools)
    Wait for the user's response before proceeding.
 
-3. **Create the project folder and main note** at `/Projects/XX. <Name>/XX. <Name>.md` using the existing `/Templates/Projects Template.md` as the base, filled in with the project name and the information gathered above.
+3. **Create the project folder and main note** at `/Projects/XX. <Name>/XX. <Name>.md`.
+   - Use `/Templates/Projects Template.md` from the vault as the base if it exists.
+   - Otherwise, fall back to the bundled `templates/Project.md` in this skill's folder.
+   - Fill in the template with the project name and the information gathered above.
 
 4. **Report back** with:
    - The full path of the created note
