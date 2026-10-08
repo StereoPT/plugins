@@ -4,7 +4,10 @@ import {
   briefingRequest,
   changedFiles,
   clockTime,
+  dateLine,
   describeActivity,
+  greeting,
+  isoWeek,
   relativeTo,
   savedFor,
   spinnerFrame,
@@ -102,4 +105,29 @@ test('summarizeTools gives the latest activity and the files read, once each', (
   expect(
     summarizeTools(root, [{ tool: 'Read', input: { file_path: 3 } }]),
   ).toEqual({ activity: undefined, sources: [] });
+});
+
+test('greeting follows the hour of the day', () => {
+  expect(greeting(4)).toBe('Good evening');
+  expect(greeting(5)).toBe('Good morning');
+  expect(greeting(11)).toBe('Good morning');
+  expect(greeting(12)).toBe('Good afternoon');
+  expect(greeting(17)).toBe('Good afternoon');
+  expect(greeting(18)).toBe('Good evening');
+  expect(greeting(23)).toBe('Good evening');
+});
+
+test('dateLine reads weekday, day and month', () => {
+  expect(dateLine(new Date(2026, 9, 8))).toBe('Thursday 8 October');
+  expect(dateLine(new Date(2026, 0, 1))).toBe('Thursday 1 January');
+});
+
+test('isoWeek matches the ISO calendar, year edges included', () => {
+  expect(isoWeek(new Date(2026, 9, 8))).toBe(41);
+  expect(isoWeek(new Date(2026, 9, 5))).toBe(41);
+  expect(isoWeek(new Date(2026, 9, 11))).toBe(41);
+  expect(isoWeek(new Date(2026, 9, 12))).toBe(42);
+  expect(isoWeek(new Date(2026, 0, 1))).toBe(1);
+  expect(isoWeek(new Date(2027, 0, 1))).toBe(53);
+  expect(isoWeek(new Date(2024, 11, 30))).toBe(1);
 });

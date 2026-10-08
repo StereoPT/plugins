@@ -16,9 +16,45 @@ const now = atom(
   0,
 );
 
+// The character before each file in the "Files opened" list.
+const FILE_MARK = '•';
+
+// Whether the "Files opened" list is unfolded.
+const filesOpen = atom(
+  { plugin: 'obsidian', key: 'filesOpen' } as const,
+  false,
+);
+
 export const todayName = (now: Date): string => {
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+};
+
+const NAME = 'Guido';
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+// The pane's greeting for an hour of the day (0 to 23).
+export const greeting = (hour: number): string =>
+  hour >= 5 && hour < 12
+    ? 'Good morning'
+    : hour >= 12 && hour < 18
+      ? 'Good afternoon'
+      : 'Good evening';
+
+// "Thursday 8 October".
+export const dateLine = (date: Date): string =>
+  `${DAYS[date.getDay()]} ${date.getDate()} ${MONTHS[date.getMonth()]}`;
+
+// The ISO week number, as in the meal plans' file names (2026-W41).
+export const isoWeek = (date: Date): number => {
+  const day = new Date(
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
+  );
+  day.setUTCDate(day.getUTCDate() + 4 - (day.getUTCDay() || 7));
+  const yearStart = Date.UTC(day.getUTCFullYear(), 0, 1);
+
+  return Math.ceil(((day.getTime() - yearStart) / 86_400_000 + 1) / 7);
 };
 
 // The agent's system prompt: where to look and what to write. It runs in the
@@ -350,41 +386,73 @@ export const register: Register = (on) => {
             current.writtenAt,
           )
         : [];
-    const refresh = (label: string) => (
-      <Box flexDirection="row">
-        <Button
-          label={label}
-          variant="primary"
-          hotkey="r"
-          onPress={() => {
-            void show($, true).catch((error: unknown) =>
-              update($, briefing, () => ({
-                status: 'failed',
-                message: `Could not refresh: ${String(error)}`,
-              })),
-            );
-          }}
-        />
-      </Box>
-    );
+    const refreshLabel =
+      current.status === 'failed'
+        ? 'Try again'
+        : current.status === 'idle'
+          ? 'Write briefing'
+          : 'Refresh';
 
+    const isFilesOpen = await read($, filesOpen);
     const sources = (list: string[]) =>
       list.length > 0 && (
         <Box flexDirection="column">
-          <Text bold dimColor>
-            Files opened
-          </Text>
-          {list.map((path) => (
-            <Text dimColor>{relativeTo(root, path)}</Text>
-          ))}
+          <Box flexDirection="row">
+            <Button
+              label={`${isFilesOpen ? '▾' : '▸'} Files opened (${list.length})`}
+              plain
+              dimColor
+              onPress={() => {
+                void update($, filesOpen, (open) => !open);
+              }}
+            />
+          </Box>
+          {isFilesOpen &&
+            list.map((path) => (
+              <Text dimColor>{` ${FILE_MARK} ${relativeTo(root, path)}`}</Text>
+            ))}
         </Box>
       );
 
+    const today = new Date();
+
     return (
       <Box flexDirection="column" gap={1}>
-        <Text bold>{todayName(new Date())}</Text>
+        <Box flexDirection="column">
+          <Box flexDirection="row" justifyContent="space-between">
+            <Text bold>
+              {greeting(today.getHours())}, {NAME}
+            </Text>
+            <Button
+              label={refreshLabel}
+              variant="primary"
+              onPress={() => {
+                void show($, true).catch((error: unknown) =>
+                  update($, briefing, () => ({
+                    status: 'failed',
+                    message: `Could not refresh: ${String(error)}`,
+                  })),
+                );
+              }}
+            />
+          </Box>
+          <Box flexDirection="row" flexWrap="wrap" gap={1}>
+            <Text dimColor>
+              {dateLine(today)} · Week {isoWeek(today)}
+            </Text>
+            {current.status === 'done' && (
+              <Text dimColor>
+                · written {clockTime(current.writtenAt)} from{' '}
+                {current.sources.length} files
+              </Text>
+            )}
+            {changed.length > 0 && (
+              <Text color="warning">· {changed.join(', ')} changed since</Text>
+            )}
+          </Box>
+        </Box>
         {current.status === 'idle' && (
-          <Text dimColor>Run /briefing to write today's briefing.</Text>
+          <Text dimColor>No briefing written yet today.</Text>
         )}
         {current.status === 'running' && (
           <Box flexDirection="row" gap={1}>
@@ -400,21 +468,11 @@ export const register: Register = (on) => {
         {current.status === 'done' && (
           <Box flexDirection="column" gap={1}>
             <Markdown text={current.text} />
-            {changed.length > 0 && (
-              <Text color="warning">
-                {changed.join(', ')} changed since this was written at{' '}
-                {clockTime(current.writtenAt)}.
-              </Text>
-            )}
-            {refresh('Refresh (r)')}
             {sources(current.sources)}
           </Box>
         )}
         {current.status === 'failed' && (
-          <Box flexDirection="column">
-            <Text color="red">{current.message}</Text>
-            {refresh('Try again (r)')}
-          </Box>
+          <Text color="red">{current.message}</Text>
         )}
       </Box>
     );

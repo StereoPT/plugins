@@ -17,6 +17,8 @@ declare module 'claude-code' {
       briefing: Briefing;
       // The clock the pane reads while a briefing runs; redraws the counter.
       now: number;
+      // Whether the "Files opened" list under the briefing is unfolded.
+      filesOpen: boolean;
     };
   }
 }
