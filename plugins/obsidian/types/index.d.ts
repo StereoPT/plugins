@@ -8,7 +8,7 @@ export type Briefing =
       activity?: string;
       sources: string[];
     }
-  | { status: 'done'; text: string; sources: string[] }
+  | { status: 'done'; text: string; sources: string[]; writtenAt: number }
   | { status: 'failed'; message: string };
 
 declare module 'claude-code' {
