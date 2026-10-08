@@ -2,5 +2,8 @@
   "name": "obsidian",
   "description": "Skills and terminal mods for the Obsidian Second Brain Vault",
   "version": "1.2.0",
-  "author": { "name": "Guido Pereira" }
+  "author": {
+    "name": "Guido Pereira"
+  },
+  "types": "./types/index.d.ts"
 }
