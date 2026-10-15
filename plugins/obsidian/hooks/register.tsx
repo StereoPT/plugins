@@ -1,21 +1,22 @@
 import { atom, read, update } from 'claude-code';
-import type { EngineInterface, Register, Timer } from 'claude-code';
+import type { EngineInterface, Register } from 'claude-code';
 
 import type { Briefing, Challenge, Saved } from '../types';
 
+import {
+  registerCommand,
+  startBriefing,
+  stopTicker,
+} from './briefing';
 import { chooseChallenge, showChallenge } from './challenge';
 import {
   AGENT,
-  AGENT_PROMPT,
   FILE_MARK,
   IDLE_CHALLENGE,
   NAME,
-  POLL_EVERY,
   STORE_KEY,
-  TICK_MS,
 } from './constants';
 import {
-  briefingRequest,
   changedFiles,
   clockTime,
   dateLine,
@@ -24,7 +25,6 @@ import {
   relativeTo,
   savedFor,
   spinnerFrame,
-  summarizeTools,
 } from './utils';
 
 const PANE = 'morning';
@@ -49,95 +49,6 @@ const filesOpen = atom(
   { plugin: 'obsidian', key: 'filesOpen' } as const,
   false,
 );
-
-let ticker: Timer | undefined;
-const stopTicker = () => {
-  ticker?.cancel();
-  ticker = undefined;
-};
-
-
-// Starts the briefer, for /briefing when nothing is saved for today and for
-// the Refresh button.
-const start = async ($: EngineInterface): Promise<string> => {
-  // Registered here rather than at session.start: it needs a bound session,
-  // and a module reload would lose the name. Registering again replaces it.
-  const registered = await $.agent
-    .register({
-      name: AGENT,
-      description: 'Compiles the morning briefing from the Obsidian vault',
-      prompt: AGENT_PROMPT,
-      tools: ['Read', 'Glob', 'Grep'],
-      model: 'sonnet',
-    })
-    .catch((error: unknown) => ({ error: String(error) }));
-  if ('error' in registered) {
-    const message = `Could not register the agent: ${registered.error}`;
-    await update($, briefing, () => ({ status: 'failed', message }));
-    return message;
-  }
-
-  const startedAt = await $.clock.now();
-  await update($, briefing, () => ({
-    status: 'running',
-    startedAt,
-    sources: [],
-  }));
-  await update($, now, () => startedAt);
-  stopTicker();
-  ticker = $.clock.every(TICK_MS, () => {
-    void $.clock.now().then((time) => update($, now, () => time));
-    tickCount += 1;
-    if (tickCount % POLL_EVERY === 0) void poll($);
-  });
-  const started = await $.agent.spawn({
-    subagentType: registered.agent,
-    description: 'Morning briefing',
-    prompt: briefingRequest(isoDate(new Date())),
-  });
-  if (started.deny !== undefined || started.agentId === undefined) {
-    const message = started.deny ?? 'The agent did not start.';
-    stopTicker();
-    await update($, briefing, () => ({ status: 'failed', message }));
-    return `Could not start the briefing: ${message}`;
-  }
-  const agentId = started.agentId;
-  await update($, briefing, (current) =>
-    current.status === 'running' ? { ...current, agentId } : current,
-  );
-
-  return 'Writing the morning briefing.';
-};
-
-// Registered at session start and again whenever the briefing is shown: a hot
-// reload does not re-run session.start. A name registered again is replaced.
-// Not called `morning`: a skill of that name exists, and the two were taken
-// for each other.
-const registerCommand = async ($: EngineInterface) => {
-  await $.command.register({
-    name: 'briefing',
-    description: "Compile today's morning briefing from the vault",
-  });
-};
-
-let tickCount = 0;
-
-// Updates the pane's activity line and files list from the briefer's tool
-// calls so far.
-const poll = async ($: EngineInterface) => {
-  const current = await read($, briefing);
-  if (current.status !== 'running' || current.agentId === undefined) return;
-  const messages = await $.session.messages({ agentId: current.agentId });
-  if (!Array.isArray(messages)) return;
-  const uses = messages.flatMap((message) => message.toolUses);
-  const { activity, sources } = summarizeTools(await $.session.root(), uses);
-  await update($, briefing, (latest) =>
-    latest.status === 'running' &&
-    (latest.activity !== activity || latest.sources.length !== sources.length)
-      ? { ...latest, activity, sources }
-      : latest,
-  );
-};
 
 // Opens the pane and shows today's briefing: the saved one, or a new one when
 // none is saved or `isRefresh`. Returns the command's one line of output.
@@ -165,7 +76,7 @@ const show = async ($: EngineInterface, isRefresh: boolean): Promise<string> => 
     return "Showing today's briefing.";
   }
 
-  return start($);
+  return startBriefing($);
 };
 
 export const register: Register = (on) => {
