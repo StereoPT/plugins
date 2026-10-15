@@ -3,8 +3,20 @@ import type { EngineInterface, Timer } from 'claude-code';
 
 import type { Briefing } from '../types';
 
-import { AGENT, AGENT_PROMPT, POLL_EVERY, TICK_MS } from './constants';
-import { briefingRequest, isoDate, summarizeTools } from './utils';
+import { showChallenge } from './challenge';
+import {
+  AGENT,
+  AGENT_PROMPT,
+  POLL_EVERY,
+  STORE_KEY,
+  TICK_MS,
+} from './constants';
+import {
+  briefingRequest,
+  isoDate,
+  savedFor,
+  summarizeTools,
+} from './utils';
 
 // Declared again in register.tsx, which reads them: the validator reads an atom
 // only from the file that uses it. Each pair is the same value.
@@ -106,4 +118,35 @@ async function poll($: EngineInterface): Promise<void> {
       ? { ...latest, activity, sources }
       : latest,
   );
+}
+
+// Shows today's briefing: the saved one, or a new one when none is saved or
+// `isRefresh`. Returns the command's one line of output.
+export async function showBriefing(
+  $: EngineInterface,
+  isRefresh: boolean,
+): Promise<string> {
+  await registerCommand($);
+  void showChallenge($);
+  const current = await read($, briefing);
+  if (current.status === 'running') {
+    return 'The briefing is still being written.';
+  }
+
+  // One briefing a day: show today's if it was already written.
+  const saved = savedFor(
+    isRefresh ? undefined : await $.store.get(STORE_KEY),
+    isoDate(new Date()),
+  );
+  if (saved !== undefined) {
+    await update($, briefing, () => ({
+      status: 'done',
+      text: saved.text,
+      sources: saved.sources,
+      writtenAt: saved.writtenAt,
+    }));
+    return "Showing today's briefing.";
+  }
+
+  return startBriefing($);
 }
