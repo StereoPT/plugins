@@ -13,6 +13,7 @@ import {
   greeting,
   relativeTo,
   spinnerFrame,
+  splitSections,
 } from './utils';
 
 // The four values the pane reads, declared again here: the validator reads an
@@ -142,7 +143,18 @@ export async function renderPane($: EngineInterface, e: RenderInput<'Pane'>) {
         </Box>
       )}
       {current.status === 'done' && (
-        <Markdown text={current.text} />
+        <Box flexDirection="column" gap={1}>
+          {splitSections(current.text).map((section) => (
+            <Box flexDirection="column">
+              {section.heading !== undefined && (
+                <Text bold color="claude">
+                  {section.heading}
+                </Text>
+              )}
+              {section.body !== '' && <Markdown text={section.body} />}
+            </Box>
+          ))}
+        </Box>
       )}
       {current.status === 'failed' && (
         <Text color="red">{current.message}</Text>

@@ -34,6 +34,10 @@ export type ToolInput = { file_path?: string; pattern?: string; path?: string };
 // One tool call from the briefer's transcript.
 export type ToolUse = { tool: string; input: Record<string, unknown> };
 
+// One part of the briefing: a `## ` heading and the text under it. The text
+// before the first heading has no heading.
+export type Section = { heading?: string; body: string };
+
 declare module 'claude-code' {
   interface PluginState {
     'obsidian': {

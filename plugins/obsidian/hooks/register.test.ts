@@ -14,6 +14,7 @@ import {
   storedChallenge,
   savedFor,
   spinnerFrame,
+  splitSections,
   summarizeTools,
 } from './utils';
 
@@ -147,4 +148,27 @@ test('challengeRequest names the previous challenge, when there is one', () => {
   const request = challengeRequest('2026-10-15', 'Walk around the block.');
   expect(request).toContain('2026-10-15');
   expect(request).toContain('Walk around the block.');
+});
+
+test('splitSections cuts the briefing at its ## headings', () => {
+  const text = 'Intro.\n## Today\n- one\n- two\n## Projects\nPaper Golf.';
+  expect(splitSections(text)).toEqual([
+    { body: 'Intro.' },
+    { heading: 'Today', body: '- one\n- two' },
+    { heading: 'Projects', body: 'Paper Golf.' },
+  ]);
+});
+
+test('splitSections leaves a briefing without headings whole', () => {
+  expect(splitSections('Just text.\n\nMore.')).toEqual([
+    { body: 'Just text.\n\nMore.' },
+  ]);
+  expect(splitSections('')).toEqual([]);
+});
+
+test('splitSections ignores ## lines inside a code fence', () => {
+  const text = '## Code\n```\n## not a heading\n```';
+  expect(splitSections(text)).toEqual([
+    { heading: 'Code', body: '```\n## not a heading\n```' },
+  ]);
 });

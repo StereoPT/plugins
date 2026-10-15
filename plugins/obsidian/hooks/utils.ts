@@ -1,6 +1,7 @@
 import type {
   ChallengeStore,
   Saved,
+  Section,
   ToolInput,
   ToolUse,
 } from '../types';
@@ -135,3 +136,32 @@ export const challengeRequest = (today: string, previous?: string): string =>
   `Today is ${today}.${
     previous ? `\n\nThe previous challenge, not to be repeated: ${previous}` : ''
   }\n\nGive today's challenge.`;
+
+// The briefing split at its `## ` headings, so the pane can colour them. A
+// briefing without any is one section with no heading.
+export const splitSections = (text: string): Section[] => {
+  const sections: Section[] = [];
+  let heading: string | undefined;
+  let lines: string[] = [];
+  let inFence = false;
+  const close = () => {
+    const body = lines.join('\n').trim();
+    if (heading !== undefined || body !== '') {
+      sections.push(heading === undefined ? { body } : { heading, body });
+    }
+    lines = [];
+  };
+  for (const line of text.split('\n')) {
+    if (line.startsWith('```')) inFence = !inFence;
+    const match = inFence ? null : /^## (.+?)\s*$/.exec(line);
+    if (match) {
+      close();
+      heading = match[1];
+    } else {
+      lines.push(line);
+    }
+  }
+  close();
+
+  return sections;
+};
