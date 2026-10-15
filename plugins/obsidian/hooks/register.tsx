@@ -243,10 +243,12 @@ export const rememberChallenge = (
 
 const CHALLENGE_PROMPT = `You suggest one small personal or fun challenge for Guido, a software engineer in Portugal, to do today. Reply with the challenge only: one or two sentences, with no title, no introduction and no quotation marks.
 
+Guido's interests: Arduino and electronics (ESP32, his quadruped robot), DIY (he is building a house), cooking for two, UX design, artificial intelligence, mindfulness, and also his homelab, small games and apps, manhwas, trips and being outdoors.
+
 Rules:
 - It must be doable in 30 minutes or less, at home or nearby, with no purchase and no heavy screen time.
-- Keep it light and attainable. It is not a work or coding task.
-- Vary the kind from day to day: movement, food, learning, creativity, tidying, people.
+- Keep it light and attainable. It is not a work task.
+- About two days in three it should tie into one of his interests. Otherwise pick something general: movement, food, learning, creativity, tidying, people.
 - Never repeat, or lightly reword, a challenge from the list you are given.`;
 
 export const challengeRequest = (today: string, recent: string[]): string =>
@@ -589,6 +591,7 @@ export const register: Register = (on) => {
         {challengeStatus !== 'idle' && (
           <Box
             flexDirection="column"
+            gap={1}
             borderStyle="round"
             borderColor="claude"
             paddingX={1}
