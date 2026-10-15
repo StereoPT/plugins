@@ -1,14 +1,14 @@
 import { atom, read, update } from 'claude-code';
 import type { EngineInterface, Register, Timer } from 'claude-code';
 
-import type { Briefing, Challenge, ChallengeStore, Saved } from '../types';
+import type { Briefing, Challenge, Saved } from '../types';
 
+import { chooseChallenge, showChallenge } from './challenge';
 import {
   AGENT,
   AGENT_PROMPT,
-  CHALLENGE_KEY,
-  CHALLENGE_PROMPT,
   FILE_MARK,
+  IDLE_CHALLENGE,
   NAME,
   POLL_EVERY,
   STORE_KEY,
@@ -16,15 +16,12 @@ import {
 } from './constants';
 import {
   briefingRequest,
-  challengeRequest,
   changedFiles,
   clockTime,
   dateLine,
   greeting,
   isoDate,
   relativeTo,
-  savedChallenge,
-  storedChallenge,
   savedFor,
   spinnerFrame,
   summarizeTools,
@@ -44,7 +41,7 @@ const now = atom(
 
 const challenge = atom(
   { plugin: 'obsidian', key: 'challenge' } as const,
-  { status: 'idle' } as Challenge,
+  IDLE_CHALLENGE as Challenge,
 );
 
 // Whether the "Files opened" list is unfolded.
@@ -140,59 +137,6 @@ const poll = async ($: EngineInterface) => {
       ? { ...latest, activity, sources }
       : latest,
   );
-};
-
-// Asks the model for a new challenge and keeps it. Skipped while one is
-// already being chosen.
-const chooseChallenge = async ($: EngineInterface): Promise<void> => {
-  if ((await read($, challenge)).status === 'running') return;
-  await update($, challenge, () => ({ status: 'running' }));
-  const today = isoDate(new Date());
-  try {
-    const stored = await $.store.get(CHALLENGE_KEY);
-    const result = await $.model.complete({
-      model: 'haiku',
-      system: CHALLENGE_PROMPT,
-      prompt: challengeRequest(today, storedChallenge(stored)?.text),
-      maxTokens: 200,
-    });
-    const text = result.isAnswered ? result.text.trim() : '';
-    if (text === '') {
-      const why = result.isAnswered ? 'empty-reply' : result.reason;
-      await update($, challenge, () => ({
-        status: 'failed',
-        message: `Could not get a challenge: ${why}.`,
-      }));
-      return;
-    }
-    await $.store.set(CHALLENGE_KEY, {
-      date: today,
-      text,
-    } satisfies ChallengeStore);
-    await update($, challenge, () => ({ status: 'done', text }));
-  } catch (error: unknown) {
-    await update($, challenge, () => ({
-      status: 'failed',
-      message: `Could not get a challenge: ${String(error)}`,
-    }));
-  }
-};
-
-// Shows today's saved challenge, or chooses one when there is none. A
-// challenge that is already shown or being chosen is left alone, so the
-// briefing's Refresh keeps it.
-const showChallenge = async ($: EngineInterface): Promise<void> => {
-  const saved = savedChallenge(
-    await $.store.get(CHALLENGE_KEY),
-    isoDate(new Date()),
-  );
-  if (saved !== undefined) {
-    await update($, challenge, (current) =>
-      current.status === 'running' ? current : { status: 'done', text: saved },
-    );
-    return;
-  }
-  await chooseChallenge($);
 };
 
 // Opens the pane and shows today's briefing: the saved one, or a new one when

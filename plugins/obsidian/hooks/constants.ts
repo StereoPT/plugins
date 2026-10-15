@@ -60,3 +60,6 @@ export const POLL_EVERY = 8;
 // Claude Code's own spinner glyphs, played forwards then back.
 export const GLYPHS = ['·', '✢', '✳', '✶', '✻', '✽'];
 export const SPINNER = [...GLYPHS, ...GLYPHS.slice(1, -1).reverse()];
+
+// What the challenge starts as, before one is chosen.
+export const IDLE_CHALLENGE = { status: 'idle' } as const;
