@@ -85,9 +85,15 @@ export async function renderPane($: EngineInterface, e: RenderInput<'Pane'>) {
           />
         </Box>
         {isFilesOpen &&
-          list.map((path) => (
-            <Text dimColor>{` ${FILE_MARK} ${relativeTo(root, path)}`}</Text>
-          ))}
+          list.map((path) => {
+            const name = relativeTo(root, path);
+
+            return changed.includes(name) ? (
+              <Text color="warning">{` ${FILE_MARK} ${name} *`}</Text>
+            ) : (
+              <Text dimColor>{` ${FILE_MARK} ${name}`}</Text>
+            );
+          })}
       </Box>
     );
 
@@ -123,9 +129,7 @@ export async function renderPane($: EngineInterface, e: RenderInput<'Pane'>) {
               {current.sources.length} files
             </Text>
           )}
-          {changed.length > 0 && (
-            <Text color="warning">· {changed.join(', ')} changed since</Text>
-          )}
+          {changed.length > 0 && <Text color="warning">*</Text>}
         </Box>
       </Box>
       {current.status === 'idle' && (
