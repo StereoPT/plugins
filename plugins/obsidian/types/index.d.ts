@@ -11,6 +11,12 @@ export type Briefing =
   | { status: 'done'; text: string; sources: string[]; writtenAt: number }
   | { status: 'failed'; message: string };
 
+export type Challenge =
+  | { status: 'idle' }
+  | { status: 'running' }
+  | { status: 'done'; text: string }
+  | { status: 'failed'; message: string };
+
 declare module 'claude-code' {
   interface PluginState {
     'obsidian': {
@@ -19,6 +25,8 @@ declare module 'claude-code' {
       now: number;
       // Whether the "Files opened" list under the briefing is unfolded.
       filesOpen: boolean;
+      // The Challenge of the Day shown in its box under the briefing.
+      challenge: Challenge;
     };
   }
 }

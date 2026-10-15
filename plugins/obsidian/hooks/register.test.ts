@@ -2,13 +2,17 @@ import { test, expect } from 'claude-code/testing';
 
 import {
   briefingRequest,
+  challengeRequest,
   changedFiles,
   clockTime,
   dateLine,
   describeActivity,
   greeting,
   isoWeek,
+  recentChallenges,
   relativeTo,
+  rememberChallenge,
+  savedChallenge,
   savedFor,
   spinnerFrame,
   summarizeTools,
@@ -130,4 +134,35 @@ test('isoWeek matches the ISO calendar, year edges included', () => {
   expect(isoWeek(new Date(2026, 0, 1))).toBe(1);
   expect(isoWeek(new Date(2027, 0, 1))).toBe(53);
   expect(isoWeek(new Date(2024, 11, 30))).toBe(1);
+});
+
+test('savedChallenge accepts only a challenge chosen today', () => {
+  const stored = { date: '2026-10-15', text: 'Walk around the block.', recent: [] };
+  expect(savedChallenge(stored, '2026-10-15')).toBe('Walk around the block.');
+  expect(savedChallenge(stored, '2026-10-16')).toBeUndefined();
+  expect(savedChallenge({ date: '2026-10-15', text: '' }, '2026-10-15')).toBeUndefined();
+  expect(savedChallenge(undefined, '2026-10-15')).toBeUndefined();
+});
+
+test('rememberChallenge keeps the newest ten, newest first', () => {
+  const old = Array.from({ length: 10 }, (_, i) => `old ${i}`);
+  const next = rememberChallenge({ recent: old }, '2026-10-15', 'new');
+  expect(next.date).toBe('2026-10-15');
+  expect(next.text).toBe('new');
+  expect(next.recent).toHaveLength(10);
+  expect(next.recent[0]).toBe('new');
+  expect(next.recent[9]).toBe('old 8');
+});
+
+test('recentChallenges ignores anything that is not a list of text', () => {
+  expect(recentChallenges(undefined)).toEqual([]);
+  expect(recentChallenges({ recent: 'x' })).toEqual([]);
+  expect(recentChallenges({ recent: ['a', 3, 'b'] })).toEqual(['a', 'b']);
+});
+
+test('challengeRequest lists the recent challenges to avoid', () => {
+  expect(challengeRequest('2026-10-15', [])).not.toContain('Recent');
+  const request = challengeRequest('2026-10-15', ['Walk around the block.']);
+  expect(request).toContain('2026-10-15');
+  expect(request).toContain('- Walk around the block.');
 });

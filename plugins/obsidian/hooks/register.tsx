@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code';
 import type { EngineInterface, Register, Timer } from 'claude-code';
 
-import type { Briefing } from '../types';
+import type { Briefing, Challenge } from '../types';
 
 const PANE = 'morning';
 const AGENT = 'morning-briefer';
@@ -14,6 +14,11 @@ const briefing = atom(
 const now = atom(
   { plugin: 'obsidian', key: 'now' } as const,
   0,
+);
+
+const challenge = atom(
+  { plugin: 'obsidian', key: 'challenge' } as const,
+  { status: 'idle' } as Challenge,
 );
 
 // The character before each file in the "Files opened" list.
@@ -194,6 +199,63 @@ export const changedFiles = (
     .filter((file) => file.mtimeMs > writtenAt)
     .map((file) => relativeTo(root, file.path));
 
+const CHALLENGE_KEY = 'challenge';
+// How many past challenges the model is told not to repeat.
+const RECENT_LIMIT = 10;
+
+// The challenge as kept between sessions: today's, and the latest ones so a
+// new day (or a new challenge) does not repeat them.
+export type ChallengeStore = { date: string; text: string; recent: string[] };
+
+// What the store holds, if it is a challenge chosen today.
+export const savedChallenge = (
+  value: unknown,
+  today: string,
+): string | undefined => {
+  if (typeof value !== 'object' || value === null) return undefined;
+  const saved = value as Partial<ChallengeStore>;
+  return saved.date === today &&
+    typeof saved.text === 'string' &&
+    saved.text !== ''
+    ? saved.text
+    : undefined;
+};
+
+// The recent challenges in the store, newest first.
+export const recentChallenges = (value: unknown): string[] => {
+  if (typeof value !== 'object' || value === null) return [];
+  const { recent } = value as Partial<ChallengeStore>;
+  return Array.isArray(recent)
+    ? recent.filter((item): item is string => typeof item === 'string')
+    : [];
+};
+
+// The store after `text` is chosen for `today`.
+export const rememberChallenge = (
+  value: unknown,
+  today: string,
+  text: string,
+): ChallengeStore => ({
+  date: today,
+  text,
+  recent: [text, ...recentChallenges(value)].slice(0, RECENT_LIMIT),
+});
+
+const CHALLENGE_PROMPT = `You suggest one small personal or fun challenge for Guido, a software engineer in Portugal, to do today. Reply with the challenge only: one or two sentences, with no title, no introduction and no quotation marks.
+
+Rules:
+- It must be doable in 30 minutes or less, at home or nearby, with no purchase and no heavy screen time.
+- Keep it light and attainable. It is not a work or coding task.
+- Vary the kind from day to day: movement, food, learning, creativity, tidying, people.
+- Never repeat, or lightly reword, a challenge from the list you are given.`;
+
+export const challengeRequest = (today: string, recent: string[]): string =>
+  `Today is ${today}.${
+    recent.length > 0
+      ? `\n\nRecent challenges, not to be repeated:\n${recent.map((text) => `- ${text}`).join('\n')}`
+      : ''
+  }\n\nGive today's challenge.`;
+
 let ticker: Timer | undefined;
 const stopTicker = () => {
   ticker?.cancel();
@@ -287,11 +349,62 @@ const poll = async ($: EngineInterface) => {
   );
 };
 
+// Asks the model for a new challenge and keeps it. Skipped while one is
+// already being chosen.
+const chooseChallenge = async ($: EngineInterface): Promise<void> => {
+  if ((await read($, challenge)).status === 'running') return;
+  await update($, challenge, () => ({ status: 'running' }));
+  const today = todayName(new Date());
+  try {
+    const stored = await $.store.get(CHALLENGE_KEY);
+    const result = await $.model.complete({
+      model: 'haiku',
+      system: CHALLENGE_PROMPT,
+      prompt: challengeRequest(today, recentChallenges(stored)),
+      maxTokens: 200,
+    });
+    const text = result.isAnswered ? result.text.trim() : '';
+    if (text === '') {
+      const why = result.isAnswered ? 'empty-reply' : result.reason;
+      await update($, challenge, () => ({
+        status: 'failed',
+        message: `Could not get a challenge: ${why}.`,
+      }));
+      return;
+    }
+    await $.store.set(CHALLENGE_KEY, rememberChallenge(stored, today, text));
+    await update($, challenge, () => ({ status: 'done', text }));
+  } catch (error: unknown) {
+    await update($, challenge, () => ({
+      status: 'failed',
+      message: `Could not get a challenge: ${String(error)}`,
+    }));
+  }
+};
+
+// Shows today's saved challenge, or chooses one when there is none. A
+// challenge that is already shown or being chosen is left alone, so the
+// briefing's Refresh keeps it.
+const showChallenge = async ($: EngineInterface): Promise<void> => {
+  const saved = savedChallenge(
+    await $.store.get(CHALLENGE_KEY),
+    todayName(new Date()),
+  );
+  if (saved !== undefined) {
+    await update($, challenge, (current) =>
+      current.status === 'running' ? current : { status: 'done', text: saved },
+    );
+    return;
+  }
+  await chooseChallenge($);
+};
+
 // Opens the pane and shows today's briefing: the saved one, or a new one when
 // none is saved or `isRefresh`. Returns the command's one line of output.
 const show = async ($: EngineInterface, isRefresh: boolean): Promise<string> => {
   await registerCommand($);
   await $.ui.open({ id: PANE, title: 'Morning' });
+  void showChallenge($);
   const current = await read($, briefing);
   if (current.status === 'running') {
     return 'The briefing is still being written.';
@@ -370,6 +483,8 @@ export const register: Register = (on) => {
     const { Box, Text, Markdown, Button } = $.ui.resolve(e);
     const current = await read($, briefing);
     const time = await read($, now);
+    const challengeNow = await read($, challenge);
+    const challengeStatus = challengeNow.status;
     const root = await $.session.root();
     // Files the briefing read that were edited after it was written.
     const changed =
@@ -466,14 +581,47 @@ export const register: Register = (on) => {
           </Box>
         )}
         {current.status === 'done' && (
-          <Box flexDirection="column" gap={1}>
-            <Markdown text={current.text} />
-            {sources(current.sources)}
-          </Box>
+          <Markdown text={current.text} />
         )}
         {current.status === 'failed' && (
           <Text color="red">{current.message}</Text>
         )}
+        {challengeStatus !== 'idle' && (
+          <Box
+            flexDirection="column"
+            borderStyle="round"
+            borderColor="claude"
+            paddingX={1}
+          >
+            <Box flexDirection="row" justifyContent="space-between">
+              <Text bold color="claude">
+                Challenge of the Day
+              </Text>
+              {challengeNow.status !== 'running' && (
+                <Button
+                  label={
+                    challengeNow.status === 'failed' ? 'Try again' : 'New challenge'
+                  }
+                  plain
+                  dimColor
+                  onPress={() => {
+                    void chooseChallenge($);
+                  }}
+                />
+              )}
+            </Box>
+            {challengeNow.status === 'running' && (
+              <Text dimColor>Thinking of one…</Text>
+            )}
+            {challengeNow.status === 'done' && (
+              <Markdown text={challengeNow.text} />
+            )}
+            {challengeNow.status === 'failed' && (
+              <Text color="red">{challengeNow.message}</Text>
+            )}
+          </Box>
+        )}
+        {current.status === 'done' && sources(current.sources)}
       </Box>
     );
   });
