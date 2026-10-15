@@ -2,7 +2,6 @@ export const NAME = 'Guido';
 export const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 export const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-export const PANE = 'morning';
 export const AGENT = 'morning-briefer';
 
 // The character before each file in the "Files opened" list.
@@ -42,8 +41,6 @@ export const TICK_MS = 120;
 export const STORE_KEY = 'briefing';
 
 export const CHALLENGE_KEY = 'challenge';
-// How many past challenges the model is told not to repeat.
-export const RECENT_LIMIT = 10;
 
 export const CHALLENGE_PROMPT = `You suggest one small personal or fun challenge for Guido, a software engineer in Portugal, to do today. Reply with the challenge only: one or two sentences, with no title, no introduction and no quotation marks.
 
@@ -53,9 +50,13 @@ Rules:
 - It must be doable in 30 minutes or less, at home or nearby, with no purchase and no heavy screen time.
 - Keep it light and attainable. It is not a work task.
 - About two days in three it should tie into one of his interests. Otherwise pick something general: movement, food, learning, creativity, tidying, people.
-- Never repeat, or lightly reword, a challenge from the list you are given.`;
+- Never repeat, or lightly reword, the previous challenge you are given.`;
 
 // How many ticks pass between looks at the briefer's transcript (about a
 // second). The transcript is read rather than watching tool.call events: an
 // agent started from a button press had its events go untracked.
 export const POLL_EVERY = 8;
+
+// Claude Code's own spinner glyphs, played forwards then back.
+export const GLYPHS = ['·', '✢', '✳', '✶', '✻', '✽'];
+export const SPINNER = [...GLYPHS, ...GLYPHS.slice(1, -1).reverse()];

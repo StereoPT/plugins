@@ -4,16 +4,18 @@ import {
   briefingRequest,
   challengeRequest,
   changedFiles,
+  clockTime,
+  dateLine,
   describeActivity,
-  recentChallenges,
+  greeting,
+  isoDate,
   relativeTo,
-  rememberChallenge,
   savedChallenge,
+  storedChallenge,
   savedFor,
   spinnerFrame,
   summarizeTools,
-} from './register';
-import { clockTime, dateLine, greeting, isoDate } from './utils';
+} from './utils';
 
 test('isoDate pads month and day', () => {
   expect(isoDate(new Date(2026, 0, 5))).toBe('2026-01-05');
@@ -130,25 +132,19 @@ test('savedChallenge accepts only a challenge chosen today', () => {
   expect(savedChallenge(undefined, '2026-10-15')).toBeUndefined();
 });
 
-test('rememberChallenge keeps the newest ten, newest first', () => {
-  const old = Array.from({ length: 10 }, (_, i) => `old ${i}`);
-  const next = rememberChallenge({ recent: old }, '2026-10-15', 'new');
-  expect(next.date).toBe('2026-10-15');
-  expect(next.text).toBe('new');
-  expect(next.recent).toHaveLength(10);
-  expect(next.recent[0]).toBe('new');
-  expect(next.recent[9]).toBe('old 8');
+test('storedChallenge reads the stored challenge whatever its day', () => {
+  expect(storedChallenge({ date: '2026-10-14', text: 'Cook five ingredients.' })).toEqual({
+    date: '2026-10-14',
+    text: 'Cook five ingredients.',
+  });
+  expect(storedChallenge({ date: '2026-10-14', text: '' })).toBeUndefined();
+  expect(storedChallenge({ text: 'No date.' })).toBeUndefined();
+  expect(storedChallenge(undefined)).toBeUndefined();
 });
 
-test('recentChallenges ignores anything that is not a list of text', () => {
-  expect(recentChallenges(undefined)).toEqual([]);
-  expect(recentChallenges({ recent: 'x' })).toEqual([]);
-  expect(recentChallenges({ recent: ['a', 3, 'b'] })).toEqual(['a', 'b']);
-});
-
-test('challengeRequest lists the recent challenges to avoid', () => {
-  expect(challengeRequest('2026-10-15', [])).not.toContain('Recent');
-  const request = challengeRequest('2026-10-15', ['Walk around the block.']);
+test('challengeRequest names the previous challenge, when there is one', () => {
+  expect(challengeRequest('2026-10-15')).not.toContain('previous');
+  const request = challengeRequest('2026-10-15', 'Walk around the block.');
   expect(request).toContain('2026-10-15');
-  expect(request).toContain('- Walk around the block.');
+  expect(request).toContain('Walk around the block.');
 });

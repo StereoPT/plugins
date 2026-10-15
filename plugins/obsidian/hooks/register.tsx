@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code';
 import type { EngineInterface, Register, Timer } from 'claude-code';
 
-import type { Briefing, Challenge } from '../types';
+import type { Briefing, Challenge, ChallengeStore, Saved } from '../types';
 
 import {
   AGENT,
@@ -10,18 +10,27 @@ import {
   CHALLENGE_PROMPT,
   FILE_MARK,
   NAME,
-  PANE,
   POLL_EVERY,
-  RECENT_LIMIT,
   STORE_KEY,
   TICK_MS,
 } from './constants';
 import {
+  briefingRequest,
+  challengeRequest,
+  changedFiles,
   clockTime,
   dateLine,
   greeting,
   isoDate,
+  relativeTo,
+  savedChallenge,
+  storedChallenge,
+  savedFor,
+  spinnerFrame,
+  summarizeTools,
 } from './utils';
+
+const PANE = 'morning';
 
 const briefing = atom(
   { plugin: 'obsidian', key: 'briefing' } as const,
@@ -43,149 +52,6 @@ const filesOpen = atom(
   { plugin: 'obsidian', key: 'filesOpen' } as const,
   false,
 );
-
-// A file path shown relative to the vault, so the list reads as notes.
-export const relativeTo = (root: string, path: string): string =>
-  path.startsWith(`${root}/`) ? path.slice(root.length + 1) : path;
-
-// Claude Code's own spinner glyphs, played forwards then back.
-const GLYPHS = ['·', '✢', '✳', '✶', '✻', '✽'];
-const SPINNER = [...GLYPHS, ...GLYPHS.slice(1, -1).reverse()];
-
-export const spinnerFrame = (time: number): string =>
-  SPINNER[Math.floor(time / TICK_MS) % SPINNER.length] ?? '';
-
-type ToolInput = { file_path?: string; pattern?: string; path?: string };
-
-// The one line the pane shows while the briefer works: what its latest tool
-// call is doing. Other tools (and calls with nothing to show) give undefined.
-export const describeActivity = (
-  root: string,
-  tool: string,
-  input: ToolInput,
-): string | undefined => {
-  if (tool === 'Read' && input.file_path) {
-    return `Reading ${relativeTo(root, input.file_path)}…`;
-  }
-  if (tool === 'Glob' && input.pattern) {
-    return `Looking for ${input.pattern}…`;
-  }
-  if (tool === 'Grep' && input.pattern) {
-    const where =
-      input.path && input.path !== root
-        ? relativeTo(root, input.path)
-        : 'the vault';
-    return `Searching ${where} for ${input.pattern}…`;
-  }
-  return undefined;
-};
-
-type ToolUse = { tool: string; input: Record<string, unknown> };
-
-const asText = (value: unknown): string | undefined =>
-  typeof value === 'string' && value !== '' ? value : undefined;
-
-// What the briefer has done so far, from its tool calls in order: the line
-// for the latest one the pane can describe, and the files it has opened.
-export const summarizeTools = (
-  root: string,
-  uses: ToolUse[],
-): { activity?: string; sources: string[] } => {
-  const sources: string[] = [];
-  let activity: string | undefined;
-  for (const { tool, input } of uses) {
-    const args = {
-      file_path: asText(input.file_path),
-      pattern: asText(input.pattern),
-      path: asText(input.path),
-    };
-    activity = describeActivity(root, tool, args) ?? activity;
-    if (tool === 'Read' && args.file_path && !sources.includes(args.file_path)) {
-      sources.push(args.file_path);
-    }
-  }
-
-  return { activity, sources };
-};
-
-export const briefingRequest = (today: string): string =>
-  `Today is ${today}. Write this morning's briefing.`;
-
-// The briefing as kept between sessions, one for the day it was written.
-export type Saved = {
-  date: string;
-  text: string;
-  sources: string[];
-  writtenAt: number;
-};
-
-// What the store holds, if it is a briefing written today.
-export const savedFor = (value: unknown, today: string): Saved | undefined => {
-  if (typeof value !== 'object' || value === null) return undefined;
-  const saved = value as Partial<Saved>;
-  return saved.date === today &&
-    typeof saved.text === 'string' &&
-    Array.isArray(saved.sources) &&
-    typeof saved.writtenAt === 'number'
-    ? (saved as Saved)
-    : undefined;
-};
-
-// The files modified after the briefing was written, shown relative to the
-// vault.
-export const changedFiles = (
-  root: string,
-  files: { path: string; mtimeMs: number }[],
-  writtenAt: number,
-): string[] =>
-  files
-    .filter((file) => file.mtimeMs > writtenAt)
-    .map((file) => relativeTo(root, file.path));
-
-// The challenge as kept between sessions: today's, and the latest ones so a
-// new day (or a new challenge) does not repeat them.
-export type ChallengeStore = { date: string; text: string; recent: string[] };
-
-// What the store holds, if it is a challenge chosen today.
-export const savedChallenge = (
-  value: unknown,
-  today: string,
-): string | undefined => {
-  if (typeof value !== 'object' || value === null) return undefined;
-  const saved = value as Partial<ChallengeStore>;
-  return saved.date === today &&
-    typeof saved.text === 'string' &&
-    saved.text !== ''
-    ? saved.text
-    : undefined;
-};
-
-// The recent challenges in the store, newest first.
-export const recentChallenges = (value: unknown): string[] => {
-  if (typeof value !== 'object' || value === null) return [];
-  const { recent } = value as Partial<ChallengeStore>;
-  return Array.isArray(recent)
-    ? recent.filter((item): item is string => typeof item === 'string')
-    : [];
-};
-
-// The store after `text` is chosen for `today`.
-export const rememberChallenge = (
-  value: unknown,
-  today: string,
-  text: string,
-): ChallengeStore => ({
-  date: today,
-  text,
-  recent: [text, ...recentChallenges(value)].slice(0, RECENT_LIMIT),
-});
-
-export const challengeRequest = (today: string, recent: string[]): string =>
-  `Today is ${today}.${
-    recent.length > 0
-      ? `\n\nRecent challenges, not to be repeated:\n${recent.map((text) => `- ${text}`).join('\n')}`
-      : ''
-  }\n\nGive today's challenge.`;
 
 let ticker: Timer | undefined;
 const stopTicker = () => {
@@ -287,7 +153,7 @@ const chooseChallenge = async ($: EngineInterface): Promise<void> => {
     const result = await $.model.complete({
       model: 'haiku',
       system: CHALLENGE_PROMPT,
-      prompt: challengeRequest(today, recentChallenges(stored)),
+      prompt: challengeRequest(today, storedChallenge(stored)?.text),
       maxTokens: 200,
     });
     const text = result.isAnswered ? result.text.trim() : '';
@@ -299,7 +165,10 @@ const chooseChallenge = async ($: EngineInterface): Promise<void> => {
       }));
       return;
     }
-    await $.store.set(CHALLENGE_KEY, rememberChallenge(stored, today, text));
+    await $.store.set(CHALLENGE_KEY, {
+      date: today,
+      text,
+    } satisfies ChallengeStore);
     await update($, challenge, () => ({ status: 'done', text }));
   } catch (error: unknown) {
     await update($, challenge, () => ({

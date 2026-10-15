@@ -17,6 +17,23 @@ export type Challenge =
   | { status: 'done'; text: string }
   | { status: 'failed'; message: string };
 
+// The briefing as kept between sessions, one for the day it was written.
+export type Saved = {
+  date: string;
+  text: string;
+  sources: string[];
+  writtenAt: number;
+};
+
+// The challenge as kept between sessions: the one chosen last, and its day.
+export type ChallengeStore = { date: string; text: string };
+
+// The input of a Read, Glob or Grep call, as far as the pane describes it.
+export type ToolInput = { file_path?: string; pattern?: string; path?: string };
+
+// One tool call from the briefer's transcript.
+export type ToolUse = { tool: string; input: Record<string, unknown> };
+
 declare module 'claude-code' {
   interface PluginState {
     'obsidian': {
