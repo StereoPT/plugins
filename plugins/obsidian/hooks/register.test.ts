@@ -4,11 +4,7 @@ import {
   briefingRequest,
   challengeRequest,
   changedFiles,
-  clockTime,
-  dateLine,
   describeActivity,
-  greeting,
-  isoWeek,
   recentChallenges,
   relativeTo,
   rememberChallenge,
@@ -16,12 +12,12 @@ import {
   savedFor,
   spinnerFrame,
   summarizeTools,
-  todayName,
 } from './register';
+import { clockTime, dateLine, greeting, isoDate } from './utils';
 
-test('todayName pads month and day', () => {
-  expect(todayName(new Date(2026, 0, 5))).toBe('2026-01-05');
-  expect(todayName(new Date(2026, 9, 8))).toBe('2026-10-08');
+test('isoDate pads month and day', () => {
+  expect(isoDate(new Date(2026, 0, 5))).toBe('2026-01-05');
+  expect(isoDate(new Date(2026, 9, 8))).toBe('2026-10-08');
 });
 
 test('briefingRequest tells the agent which day it is', () => {
@@ -122,18 +118,8 @@ test('greeting follows the hour of the day', () => {
 });
 
 test('dateLine reads weekday, day and month', () => {
-  expect(dateLine(new Date(2026, 9, 8))).toBe('Thursday 8 October');
-  expect(dateLine(new Date(2026, 0, 1))).toBe('Thursday 1 January');
-});
-
-test('isoWeek matches the ISO calendar, year edges included', () => {
-  expect(isoWeek(new Date(2026, 9, 8))).toBe(41);
-  expect(isoWeek(new Date(2026, 9, 5))).toBe(41);
-  expect(isoWeek(new Date(2026, 9, 11))).toBe(41);
-  expect(isoWeek(new Date(2026, 9, 12))).toBe(42);
-  expect(isoWeek(new Date(2026, 0, 1))).toBe(1);
-  expect(isoWeek(new Date(2027, 0, 1))).toBe(53);
-  expect(isoWeek(new Date(2024, 11, 30))).toBe(1);
+  expect(dateLine(new Date(2026, 9, 8))).toBe('Thursday, 8 October');
+  expect(dateLine(new Date(2026, 0, 1))).toBe('Thursday, 1 January');
 });
 
 test('savedChallenge accepts only a challenge chosen today', () => {

@@ -3,6 +3,14 @@ import type { EngineInterface, Register, Timer } from 'claude-code';
 
 import type { Briefing, Challenge } from '../types';
 
+import { NAME } from './constants';
+import {
+  clockTime,
+  dateLine,
+  greeting,
+  isoDate,
+} from './utils';
+
 const PANE = 'morning';
 const AGENT = 'morning-briefer';
 
@@ -29,38 +37,6 @@ const filesOpen = atom(
   { plugin: 'obsidian', key: 'filesOpen' } as const,
   false,
 );
-
-export const todayName = (now: Date): string => {
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-};
-
-const NAME = 'Guido';
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-
-// The pane's greeting for an hour of the day (0 to 23).
-export const greeting = (hour: number): string =>
-  hour >= 5 && hour < 12
-    ? 'Good morning'
-    : hour >= 12 && hour < 18
-      ? 'Good afternoon'
-      : 'Good evening';
-
-// "Thursday 8 October".
-export const dateLine = (date: Date): string =>
-  `${DAYS[date.getDay()]} ${date.getDate()} ${MONTHS[date.getMonth()]}`;
-
-// The ISO week number, as in the meal plans' file names (2026-W41).
-export const isoWeek = (date: Date): number => {
-  const day = new Date(
-    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
-  );
-  day.setUTCDate(day.getUTCDate() + 4 - (day.getUTCDay() || 7));
-  const yearStart = Date.UTC(day.getUTCFullYear(), 0, 1);
-
-  return Math.ceil(((day.getTime() - yearStart) / 86_400_000 + 1) / 7);
-};
 
 // The agent's system prompt: where to look and what to write. It runs in the
 // vault, so its working directory is the vault's root.
@@ -181,13 +157,6 @@ export const savedFor = (value: unknown, today: string): Saved | undefined => {
     : undefined;
 };
 
-// HH:MM in local time.
-export const clockTime = (ms: number): string => {
-  const time = new Date(ms);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${pad(time.getHours())}:${pad(time.getMinutes())}`;
-};
-
 // The files modified after the briefing was written, shown relative to the
 // vault.
 export const changedFiles = (
@@ -301,7 +270,7 @@ const start = async ($: EngineInterface): Promise<string> => {
   const started = await $.agent.spawn({
     subagentType: registered.agent,
     description: 'Morning briefing',
-    prompt: briefingRequest(todayName(new Date())),
+    prompt: briefingRequest(isoDate(new Date())),
   });
   if (started.deny !== undefined || started.agentId === undefined) {
     const message = started.deny ?? 'The agent did not start.';
@@ -356,7 +325,7 @@ const poll = async ($: EngineInterface) => {
 const chooseChallenge = async ($: EngineInterface): Promise<void> => {
   if ((await read($, challenge)).status === 'running') return;
   await update($, challenge, () => ({ status: 'running' }));
-  const today = todayName(new Date());
+  const today = isoDate(new Date());
   try {
     const stored = await $.store.get(CHALLENGE_KEY);
     const result = await $.model.complete({
@@ -390,7 +359,7 @@ const chooseChallenge = async ($: EngineInterface): Promise<void> => {
 const showChallenge = async ($: EngineInterface): Promise<void> => {
   const saved = savedChallenge(
     await $.store.get(CHALLENGE_KEY),
-    todayName(new Date()),
+    isoDate(new Date()),
   );
   if (saved !== undefined) {
     await update($, challenge, (current) =>
@@ -415,7 +384,7 @@ const show = async ($: EngineInterface, isRefresh: boolean): Promise<string> => 
   // One briefing a day: show today's if it was already written.
   const saved = savedFor(
     isRefresh ? undefined : await $.store.get(STORE_KEY),
-    todayName(new Date()),
+    isoDate(new Date()),
   );
   if (saved !== undefined) {
     await update($, briefing, () => ({
@@ -466,7 +435,7 @@ export const register: Register = (on) => {
     const text = e.answer;
     const sources = current.sources;
     await $.store.set(STORE_KEY, {
-      date: todayName(new Date(writtenAt)),
+      date: isoDate(new Date(writtenAt)),
       text,
       sources,
       writtenAt,
@@ -555,7 +524,7 @@ export const register: Register = (on) => {
           </Box>
           <Box flexDirection="row" flexWrap="wrap" gap={1}>
             <Text dimColor>
-              {dateLine(today)} · Week {isoWeek(today)}
+              {dateLine(today)}
             </Text>
             {current.status === 'done' && (
               <Text dimColor>
