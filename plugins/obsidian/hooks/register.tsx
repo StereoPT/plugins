@@ -4,13 +4,13 @@ import type { Register } from 'claude-code';
 import type { Briefing, Memory, Saved } from '../types';
 
 import { registerCommand, showBriefing, stopTicker } from './briefing';
+import { renderBriefingPane } from './briefing-pane';
 import { AGENT, STORE_KEY } from './constants';
 import { loadMemories } from './memories';
 import { renderMemoriesPane } from './memories-pane';
-import { renderPane } from './pane';
 import { isoDate } from './utils';
 
-const PANE = 'morning';
+const BRIEFING_PANE = 'briefing';
 const MEMORIES_PANE = 'memories';
 
 const briefing = atom(
@@ -46,7 +46,7 @@ export const register: Register = (on) => {
   );
 
   on('command.run', { command: 'briefing' }, async ($) => {
-    await $.ui.open({ id: PANE, title: 'Morning' });
+    await $.ui.open({ id: BRIEFING_PANE, title: 'Morning' });
 
     return { text: await showBriefing($, false) };
   });
@@ -94,8 +94,8 @@ export const register: Register = (on) => {
     return next(e);
   });
 
-  on('ui.render', { component: 'Pane', requestId: PANE }, ($, e) =>
-    renderPane($, e),
+  on('ui.render', { component: 'Pane', requestId: BRIEFING_PANE }, ($, e) =>
+    renderBriefingPane($, e),
   );
 
   on('ui.render', { component: 'Pane', requestId: MEMORIES_PANE }, ($, e) =>

@@ -103,7 +103,7 @@ export async function registerCommand($: EngineInterface): Promise<void> {
 // briefer's transcript.
 let tickCount = 0;
 
-// Updates the pane's activity line and files list from the briefer's tool
+// Updates the briefing pane's activity line and files list from the briefer's tool
 // calls so far.
 async function poll($: EngineInterface): Promise<void> {
   const current = await read($, briefing);

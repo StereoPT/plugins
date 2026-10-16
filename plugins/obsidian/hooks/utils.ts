@@ -13,7 +13,7 @@ export const isoDate = (now: Date): string => {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 };
 
-// The pane's greeting for an hour of the day (0 to 23).
+// The briefing pane's greeting for an hour of the day (0 to 23).
 export const greeting = (hour: number): string =>
   hour >= 5 && hour < 12
     ? 'Good morning'
@@ -39,7 +39,7 @@ export const relativeTo = (root: string, path: string): string =>
 export const spinnerFrame = (time: number): string =>
   SPINNER[Math.floor(time / TICK_MS) % SPINNER.length] ?? '';
 
-// The one line the pane shows while the briefer works: what its latest tool
+// The one line the briefing pane shows while the briefer works: what its latest tool
 // call is doing. Other tools (and calls with nothing to show) give undefined.
 export const describeActivity = (
   root: string,
@@ -66,7 +66,7 @@ const asText = (value: unknown): string | undefined =>
   typeof value === 'string' && value !== '' ? value : undefined;
 
 // What the briefer has done so far, from its tool calls in order: the line
-// for the latest one the pane can describe, and the files it has opened.
+// for the latest one the briefing pane can describe, and the files it has opened.
 export const summarizeTools = (
   root: string,
   uses: ToolUse[],
@@ -137,7 +137,7 @@ export const challengeRequest = (today: string, previous?: string): string =>
     previous ? `\n\nThe previous challenge, not to be repeated: ${previous}` : ''
   }\n\nGive today's challenge.`;
 
-// The briefing split at its `## ` headings, so the pane can colour them. A
+// The briefing split at its `## ` headings, so the briefing pane can colour them. A
 // briefing without any is one section with no heading.
 export const splitSections = (text: string): Section[] => {
   const sections: Section[] = [];

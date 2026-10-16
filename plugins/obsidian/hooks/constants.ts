@@ -35,7 +35,7 @@ Rules:
 - Leave out finished work (the Done and Archive columns) and the Backlog, unless a daily note makes one of them relevant.
 - Write the briefing and nothing else: no introduction, no closing note, and no list of the files you read, since the pane shows that.`;
 
-// How often the pane redraws while the briefing runs: the spinner's pace.
+// How often the briefing pane redraws while the briefing runs: the spinner's pace.
 export const TICK_MS = 120;
 
 export const STORE_KEY = 'briefing';

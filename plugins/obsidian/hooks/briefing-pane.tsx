@@ -16,7 +16,7 @@ import {
   splitSections,
 } from './utils';
 
-// The four values the pane reads, declared again here: the validator reads an
+// The four values the briefing pane reads, declared again here: the validator reads an
 // atom only from the file that uses it. Each is the same value as in the file
 // that writes it.
 const briefing = atom(
@@ -40,8 +40,8 @@ const filesOpen = atom(
   false,
 );
 
-// Draws the morning pane: the briefing and, under it, the challenge.
-export async function renderPane($: EngineInterface, e: RenderInput<'Pane'>) {
+// Draws the briefing pane: the briefing and, under it, the challenge.
+export async function renderBriefingPane($: EngineInterface, e: RenderInput<'Pane'>) {
   const { Box, Text, Markdown, Button } = $.ui.resolve(e);
   const current = await read($, briefing);
   const time = await read($, now);
