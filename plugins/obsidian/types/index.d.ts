@@ -38,6 +38,17 @@ export type ToolUse = { tool: string; input: Record<string, unknown> };
 // before the first heading has no heading.
 export type Section = { heading?: string; body: string };
 
+export type MemoryType = 'user' | 'feedback' | 'project' | 'reference';
+
+// One memory file: its frontmatter and when it was last changed.
+export type Memory = {
+  file: string;
+  name: string;
+  description: string;
+  type: MemoryType;
+  mtimeMs: number;
+};
+
 declare module 'claude-code' {
   interface PluginState {
     'obsidian': {
@@ -48,6 +59,11 @@ declare module 'claude-code' {
       filesOpen: boolean;
       // The Challenge of the Day shown in its box under the briefing.
       challenge: Challenge;
+      // The memory files the /memories pane lists.
+      memories: Memory[];
+      // The file of the memory the /memories pane shows in full; empty for
+      // none.
+      selectedMemory: string;
     };
   }
 }

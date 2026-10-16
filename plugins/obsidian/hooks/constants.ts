@@ -63,3 +63,6 @@ export const SPINNER = [...GLYPHS, ...GLYPHS.slice(1, -1).reverse()];
 
 // What the challenge starts as, before one is chosen.
 export const IDLE_CHALLENGE = { status: 'idle' } as const;
+
+// A memory this many days old, or more, counts as stale in the memories pane.
+export const STALE_DAYS = 90;

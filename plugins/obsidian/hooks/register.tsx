@@ -1,23 +1,40 @@
 import { atom, read, update } from 'claude-code';
 import type { Register } from 'claude-code';
 
-import type { Briefing, Saved } from '../types';
+import type { Briefing, Memory, Saved } from '../types';
 
 import { registerCommand, showBriefing, stopTicker } from './briefing';
 import { AGENT, STORE_KEY } from './constants';
+import { loadMemories } from './memories';
+import { renderMemoriesPane } from './memories-pane';
 import { renderPane } from './pane';
 import { isoDate } from './utils';
 
 const PANE = 'morning';
+const MEMORIES_PANE = 'memories';
 
 const briefing = atom(
   { plugin: 'obsidian', key: 'briefing' } as const,
   { status: 'idle' } as Briefing,
 );
 
+const selectedMemory = atom(
+  { plugin: 'obsidian', key: 'selectedMemory' } as const,
+  '',
+);
+
+const memories = atom(
+  { plugin: 'obsidian', key: 'memories' } as const,
+  [] as Memory[],
+);
+
 export const register: Register = (on) => {
   on('session.start', async ($, e, next) => {
     await registerCommand($);
+    await $.command.register({
+      name: 'memories',
+      description: "Review and clean up Claude's memory files",
+    });
 
     return next(e);
   });
@@ -32,6 +49,15 @@ export const register: Register = (on) => {
     await $.ui.open({ id: PANE, title: 'Morning' });
 
     return { text: await showBriefing($, false) };
+  });
+
+  on('command.run', { command: 'memories' }, async ($) => {
+    const found = await loadMemories($);
+    await update($, memories, () => found);
+    await update($, selectedMemory, () => '');
+    await $.ui.open({ id: MEMORIES_PANE, title: 'Memories' });
+
+    return { text: `Opened the memories pane: ${found.length} memories.` };
   });
 
   on('turn.complete', async ($, e, next) => {
@@ -70,5 +96,9 @@ export const register: Register = (on) => {
 
   on('ui.render', { component: 'Pane', requestId: PANE }, ($, e) =>
     renderPane($, e),
+  );
+
+  on('ui.render', { component: 'Pane', requestId: MEMORIES_PANE }, ($, e) =>
+    renderMemoriesPane($, e),
   );
 };
