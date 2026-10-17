@@ -32,7 +32,7 @@ Follow these steps exactly:
    - Each task group should map to a clear goal from the objectives
    - Each subtask should have 3–6 concrete, actionable checkbox items
 
-   Use `/Templates/Project Version Template.md` from the vault as the base structure if it exists.
+   Use `/TEMPLATES/Project Version Template.md` from the vault as the base structure if it exists.
    Otherwise, fall back to the bundled `templates/Project Version.md` in this skill's folder.
    Replace the placeholder text with the generated content.
 

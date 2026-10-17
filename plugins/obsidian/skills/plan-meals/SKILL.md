@@ -15,11 +15,11 @@ Follow these steps exactly:
    - If $ARGUMENTS looks like `YYYY-WNN`, use that week directly.
    - Derive the Monday date for that week. Today is always available from the system context.
 
-2. **Compute the file path:** `/Meals/YYYY-WNN.md` using the ISO week string (e.g. `2026-W26`). Check if the file already exists — if it does, inform the user and ask whether to overwrite or abort before continuing.
+2. **Compute the file path:** `/MEALS/YYYY-WNN.md` using the ISO week string (e.g. `2026-W26`). Check if the file already exists — if it does, inform the user and ask whether to overwrite or abort before continuing.
 
-3. **Load disliked ingredients** by reading `/Meals/Preferences.md`.
+3. **Load disliked ingredients** by reading `/MEALS/Preferences.md`.
    - If the file exists, extract every item listed under "Disliked Ingredients".
-   - If the file doesn't exist, ask the user: "I couldn't find `/Meals/Preferences.md` — any ingredients you'd like to exclude from meal plans? (or press Enter to skip)". Offer to save their answer to `/Meals/Preferences.md` (using a simple `## Disliked Ingredients` heading with a bullet list) so future runs don't need to ask again.
+   - If the file doesn't exist, ask the user: "I couldn't find `/MEALS/Preferences.md` — any ingredients you'd like to exclude from meal plans? (or press Enter to skip)". Offer to save their answer to `/MEALS/Preferences.md` (using a simple `## Disliked Ingredients` heading with a bullet list) so future runs don't need to ask again.
    These must not appear in any meal this week — not as a main ingredient, not as a seasoning, not hidden inside a dish name.
 
 4. **Ask the user one question before generating:**
@@ -33,8 +33,8 @@ Follow these steps exactly:
    - Incorporate any preferences from step 4.
    - Include a short, appetising one-liner description per meal (e.g. "Pan-seared salmon with lemon butter and roasted asparagus").
 
-6. **Write the file** at `/Meals/YYYY-WNN.md`:
-   - Use `/Templates/Meal Plan Template.md` from the vault as the base if it exists. It contains Templater syntax (`<%* ... %>` blocks and `<% ... %>` expressions) for computing the week's dates — ignore that syntax and use the dates you already computed in step 1 to fill in the static Markdown structure (the `week` frontmatter field, the heading, and each day's date).
+6. **Write the file** at `/MEALS/YYYY-WNN.md`:
+   - Use `/TEMPLATES/Meal Plan Template.md` from the vault as the base if it exists. It contains Templater syntax (`<%* ... %>` blocks and `<% ... %>` expressions) for computing the week's dates — ignore that syntax and use the dates you already computed in step 1 to fill in the static Markdown structure (the `week` frontmatter field, the heading, and each day's date).
    - Otherwise, fall back to the bundled `templates/Meal Plan Template.md` in this skill's folder.
    - Fill in each day's Lunch and Dinner with the meals generated in step 5.
 

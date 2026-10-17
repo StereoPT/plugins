@@ -17,7 +17,7 @@ Follow these steps exactly:
    Wait for the user's response before proceeding.
 
 3. **Create the project folder and main note** at `/Projects/XX. <Name>/XX. <Name>.md`.
-   - Use `/Templates/Projects Template.md` from the vault as the base if it exists.
+   - Use `/TEMPLATES/Projects Template.md` from the vault as the base if it exists.
    - Otherwise, fall back to the bundled `templates/Project.md` in this skill's folder.
    - Fill in the template with the project name and the information gathered above.
 
