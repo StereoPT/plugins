@@ -1,6 +1,6 @@
 import { test, expect } from 'claude-code/testing';
 
-import { formatAge, groupByType, memoryBody, readableName, shortName, staleCount, memoryDirFor, parseMemory, removeIndexLine } from './memories';
+import { formatAge, groupByType, trashName, memoryBody, readableName, shortName, staleCount, memoryDirFor, parseMemory, removeIndexLine } from './memories';
 
 const FILE = `---
 name: refactor-step-by-step
@@ -82,4 +82,9 @@ test('readableName spaces the dashes and capitalises the first letter', () => {
 test('memoryBody drops the frontmatter', () => {
   expect(memoryBody(FILE)).toBe('Body.');
   expect(memoryBody('No frontmatter.')).toBe('No frontmatter.');
+});
+
+test('trashName adds the time before the extension', () => {
+  expect(trashName('feedback_vault.md', 5)).toBe('feedback_vault-5.md');
+  expect(trashName('notes', 5)).toBe('notes-5');
 });

@@ -5,11 +5,13 @@ import type { Memory } from '../types';
 
 import { STALE_DAYS } from './constants';
 import {
+  deleteMemory,
   formatAge,
   groupByType,
   loadMemories,
   memoryBody,
   memoryDir,
+  openInEditor,
   readableName,
   staleCount,
 } from './memories';
@@ -105,9 +107,11 @@ async function renderList(
           borderColor="claude"
           paddingX={1}
         >
-          <Text bold color="claude">
-            {`${group.type[0]?.toUpperCase()}${group.type.slice(1)} (${group.memories.length})`}
-          </Text>
+          <Box marginBottom={1}>
+            <Text bold color="claude">
+              {`${group.type[0]?.toUpperCase()}${group.type.slice(1)} (${group.memories.length})`}
+            </Text>
+          </Box>
           {group.memories.map((m) => (
             <Box key={m.file} flexDirection="row" justifyContent="space-between">
               <Button
@@ -127,7 +131,7 @@ async function renderList(
 }
 
 // The header, then one memory in full, in a box: its name with a way back to the list, its
-// type and age, its text without the frontmatter, and its file name.
+// type and age, its text without the frontmatter, and its file name with buttons to open and delete it.
 async function renderMemory(
   $: EngineInterface,
   e: RenderInput<'Pane'>,
@@ -169,7 +173,36 @@ async function renderMemory(
           </Text>
         </Box>
         <Markdown text={text} />
-        <Text dimColor>{memory.file}</Text>
+        <Box flexDirection="row" justifyContent="space-between">
+          <Text dimColor>{memory.file}</Text>
+          <Box flexDirection="row" gap={1}>
+            <Button
+              label="Open"
+              hotkey="o"
+              variant="secondary"
+              onPress={() => {
+                void openInEditor($, memory);
+              }}
+            />
+            <Button
+              label="Delete"
+              hotkey="d"
+              variant="secondary"
+              onPress={() => {
+                void deleteMemory($, memory).then(async (error) => {
+                  if (error !== undefined) {
+                    await $.ui.toast(error);
+                    return;
+                  }
+                  const found = await loadMemories($);
+                  await update($, memories, () => found);
+                  await update($, selectedMemory, () => '');
+                  await $.ui.toast(`Moved ${memory.file} to the Trash.`);
+                });
+              }}
+            />
+          </Box>
+        </Box>
       </Box>
     </Box>
   );

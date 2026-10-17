@@ -126,3 +126,47 @@ export const readableName = (memory: Memory): string => {
 // A memory file's text without its frontmatter.
 export const memoryBody = (text: string): string =>
   text.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '').trim();
+
+// Opens a memory file in VS Code. When `code` is missing or fails, a toast
+// says so.
+export async function openInEditor(
+  $: EngineInterface,
+  memory: Memory,
+): Promise<void> {
+  const path = `${await memoryDir($)}/${memory.file}`;
+  const result = await $.process.run(['code', path]).catch(() => undefined);
+  if (result === undefined || result.exitCode !== 0) {
+    await $.ui.toast(`Could not open ${memory.file} with the code command.`);
+  }
+}
+
+// The name a memory file gets in the Trash: the time is added so it never
+// replaces a file of the same name already there (the Trash cannot be listed
+// to check).
+export const trashName = (file: string, now: number): string =>
+  file.replace(/(\.md)?$/, `-${now}$1`);
+
+// Moves a memory file to the Trash and removes its line from MEMORY.md. The
+// line goes only once the file has moved. Resolves with a message when it
+// could not, and undefined when it did.
+export async function deleteMemory(
+  $: EngineInterface,
+  memory: Memory,
+): Promise<string | undefined> {
+  const dir = await memoryDir($);
+  const home = (await $.process.run(['printenv', 'HOME'])).stdout.trim();
+  const trash = `${home}/.Trash/${trashName(memory.file, await $.clock.now())}`;
+  const moved = await $.process
+    .run(['mv', `${dir}/${memory.file}`, trash])
+    .catch(() => undefined);
+  if (moved === undefined || moved.exitCode !== 0) {
+    return `Could not move ${memory.file} to the Trash.`;
+  }
+
+  const index = await $.fs.read(`${dir}/MEMORY.md`).catch(() => undefined);
+  if (index === undefined) return undefined;
+  const without = removeIndexLine(index, memory.file);
+  if (without !== index) await $.fs.write(`${dir}/MEMORY.md`, without);
+
+  return undefined;
+}
