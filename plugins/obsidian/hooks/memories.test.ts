@@ -1,6 +1,6 @@
 import { test, expect } from 'claude-code/testing';
 
-import { formatAge, groupByType, trashName, memoryBody, readableName, shortName, staleCount, memoryDirFor, parseMemory, removeIndexLine } from './memories';
+import { indexProblems, formatAge, groupByType, trashName, memoryBody, readableName, shortName, staleCount, memoryDirFor, parseMemory, removeIndexLine } from './memories';
 
 const FILE = `---
 name: refactor-step-by-step
@@ -21,9 +21,19 @@ test('parseMemory reads the frontmatter', () => {
   });
 });
 
-test('parseMemory skips files that are not memories', () => {
-  expect(parseMemory('MEMORY.md', '- [A](a.md) — hook', 1)).toBeUndefined();
-  expect(parseMemory('b.md', FILE.replace('feedback', 'other'), 1)).toBeUndefined();
+test('parseMemory puts a file with a missing or unknown type in other', () => {
+  expect(parseMemory('b.md', FILE.replace('feedback', 'feeback'), 1).type).toBe('other');
+  expect(parseMemory('b.md', FILE.replace('  type: feedback\n', ''), 1).type).toBe('other');
+});
+
+test('parseMemory names a file with no frontmatter after the file', () => {
+  expect(parseMemory('notes.md', 'Just text.', 3)).toEqual({
+    file: 'notes.md',
+    name: 'notes',
+    description: '',
+    type: 'other',
+    mtimeMs: 3,
+  });
 });
 
 test('groupByType orders types, newest first, and drops empty ones', () => {
@@ -87,4 +97,24 @@ test('memoryBody drops the frontmatter', () => {
 test('trashName adds the time before the extension', () => {
   expect(trashName('feedback_vault.md', 5)).toBe('feedback_vault-5.md');
   expect(trashName('notes', 5)).toBe('notes-5');
+});
+
+test('groupByType puts other last, and shortName leaves its names alone', () => {
+  const m = (file: string, type: 'other' | 'user') => ({
+    file, name: 'other-x', description: '', type, mtimeMs: 0,
+  });
+  const groups = groupByType([m('a', 'other'), m('b', 'user')]);
+  expect(groups.map((g) => g.type)).toEqual(['user', 'other']);
+  expect(shortName(m('a', 'other'))).toBe('other-x');
+});
+
+test('indexProblems counts unindexed files and dangling index lines', () => {
+  const index = '- [A](a.md) — one\n- [B](b.md) — two\n- [Gone](gone.md) — three';
+  expect(indexProblems(index, ['a.md', 'b.md'])).toEqual({ unindexed: 0, dangling: 1 });
+  expect(indexProblems(index, ['a.md', 'c.md', 'd.md'])).toEqual({ unindexed: 2, dangling: 2 });
+  expect(indexProblems('', ['a.md'])).toEqual({ unindexed: 1, dangling: 0 });
+});
+
+test('indexProblems counts a file linked twice once', () => {
+  expect(indexProblems('- [A](a.md)\n- [A again](a.md)', [])).toEqual({ unindexed: 0, dangling: 1 });
 });

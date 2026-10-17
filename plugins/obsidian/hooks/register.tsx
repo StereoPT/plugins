@@ -23,6 +23,11 @@ const selectedMemory = atom(
   '',
 );
 
+const confirmingDelete = atom(
+  { plugin: 'obsidian', key: 'confirmingDelete' } as const,
+  '',
+);
+
 const memories = atom(
   { plugin: 'obsidian', key: 'memories' } as const,
   [] as Memory[],
@@ -55,6 +60,7 @@ export const register: Register = (on) => {
     const found = await loadMemories($);
     await update($, memories, () => found);
     await update($, selectedMemory, () => '');
+    await update($, confirmingDelete, () => '');
     await $.ui.open({ id: MEMORIES_PANE, title: 'Memories' });
 
     return { text: `Opened the memories pane: ${found.length} memories.` };

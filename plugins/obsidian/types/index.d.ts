@@ -38,7 +38,8 @@ export type ToolUse = { tool: string; input: Record<string, unknown> };
 // before the first heading has no heading.
 export type Section = { heading?: string; body: string };
 
-export type MemoryType = 'user' | 'feedback' | 'project' | 'reference';
+// 'other' is a file whose frontmatter has no known type.
+export type MemoryType = 'user' | 'feedback' | 'project' | 'reference' | 'other';
 
 // One memory file: its frontmatter and when it was last changed.
 export type Memory = {
@@ -64,6 +65,8 @@ declare module 'claude-code' {
       // The file of the memory the /memories pane shows in full; empty for
       // none.
       selectedMemory: string;
+      // The file whose delete the pane is asking to confirm; empty for none.
+      confirmingDelete: string;
     };
   }
 }

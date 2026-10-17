@@ -2,7 +2,9 @@ import type { EngineInterface } from 'claude-code';
 
 import type { Memory, MemoryType } from '../types';
 
-export const MEMORY_TYPES: MemoryType[] = ['user', 'feedback', 'project', 'reference'];
+// The types in the order the pane groups them. 'other' comes last: it holds
+// the files whose type is missing or not one of the four before it.
+export const MEMORY_TYPES: MemoryType[] = ['user', 'feedback', 'project', 'reference', 'other'];
 
 // The value of a frontmatter key, indented or not. Quotes around it are
 // dropped.
@@ -12,24 +14,23 @@ const field = (frontmatter: string, key: string): string | undefined => {
   return value === '' ? undefined : value;
 };
 
-// A memory file's frontmatter as a Memory. Files that are not memories (no
-// frontmatter, or no name or known type) give undefined.
+// A memory file as a Memory: its frontmatter's name, description and type.
+// With no name the file's own name stands in, and with a missing or unknown
+// type the memory is 'other', so a malformed file still shows up.
 export const parseMemory = (
   file: string,
   text: string,
   mtimeMs: number,
-): Memory | undefined => {
-  const frontmatter = text.match(/^---\r?\n([\s\S]*?)\r?\n---/)?.[1];
-  if (frontmatter === undefined) return undefined;
-  const name = field(frontmatter, 'name');
+): Memory => {
+  const frontmatter =
+    text.match(/^---\r?\n([\s\S]*?)\r?\n---/)?.[1] ?? '';
   const type = MEMORY_TYPES.find((t) => t === field(frontmatter, 'type'));
-  if (name === undefined || type === undefined) return undefined;
 
   return {
     file,
-    name,
+    name: field(frontmatter, 'name') ?? file.replace(/\.md$/, ''),
     description: field(frontmatter, 'description') ?? '',
-    type,
+    type: type ?? 'other',
     mtimeMs,
   };
 };
@@ -65,12 +66,13 @@ export async function memoryDir($: EngineInterface): Promise<string> {
   return memoryDirFor(home, await $.session.root());
 }
 
-// The memories of the session's project. A missing folder, and files that are
-// not memories, leave nothing in the list.
+// The memories of the session's project: every Markdown file in its folder
+// but the index. A missing folder leaves nothing in the list.
 export async function loadMemories($: EngineInterface): Promise<Memory[]> {
   const dir = await memoryDir($);
   const entries = await $.fs.list(dir).catch(() => []);
-  const memories = await Promise.all(
+
+  return Promise.all(
     entries
       .filter((f) => f.kind === 'file' && f.name.endsWith('.md'))
       .filter((f) => f.name !== 'MEMORY.md')
@@ -78,8 +80,6 @@ export async function loadMemories($: EngineInterface): Promise<Memory[]> {
         parseMemory(f.name, await $.fs.read(`${dir}/${f.name}`), f.mtimeMs),
       ),
   );
-
-  return memories.filter((m): m is Memory => m !== undefined);
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -106,11 +106,14 @@ export const staleCount = (
 
 // A memory's name without the type it starts with ("feedback-vault-skills" in
 // the feedback group is "vault-skills"). A name with no such prefix, or that
-// is nothing but the prefix, stays as it is.
+// is nothing but the prefix, stays as it is, and so does one in 'other', which
+// has no type of its own.
 export const shortName = (memory: Memory): string => {
   const prefix = `${memory.type}-`;
 
-  return memory.name.startsWith(prefix) && memory.name.length > prefix.length
+  return memory.type !== 'other' &&
+    memory.name.startsWith(prefix) &&
+    memory.name.length > prefix.length
     ? memory.name.slice(prefix.length)
     : memory.name;
 };
@@ -170,3 +173,19 @@ export async function deleteMemory(
 
   return undefined;
 }
+
+// How far MEMORY.md and the memory files are from agreeing: files with no
+// line in the index, and index lines that point at no file.
+export const indexProblems = (
+  index: string,
+  files: string[],
+): { unindexed: number; dangling: number } => {
+  const linked = new Set(
+    [...index.matchAll(/\]\(([^)\s]+\.md)\)/g)].map((match) => match[1]),
+  );
+
+  return {
+    unindexed: files.filter((file) => !linked.has(file)).length,
+    dangling: [...linked].filter((file) => !files.includes(file ?? '')).length,
+  };
+};
